@@ -6,6 +6,7 @@ var motherpb = 0;
 var current_subpb = 0;
 var new_tag_on=0;
 var new_tag_name;
+var current_edition;
 
 // function popover_show(target) {
 //   timeout_show = window.setTimeout(function(){
@@ -292,6 +293,9 @@ function clickpb(){
     selectpb();
     //这个选择结构实现了：当取消母题的选中时，小题也被取消选中
     if (cf.hasClass("has-sub-pb") && pbselection(cf) == false){
+      //这是为了保证将有得分的错题取消选中时，分数改回原状
+      cf.find(".score_get").removeClass("done");
+      cf.find(".score_get").html("15");
       current_subpb = cf.next();
       do
       {
@@ -328,10 +332,20 @@ function selectpb(){
     if (pbselection(motherpb))
     {
       if (pbselection(cf)){
-        score_input_focus(motherpb);
+        //这为了保证分数如果输入过，则不再显示输入框
+        if(motherpb.find(".score_get").hasClass("done")){
+          //do nothing
+        }
+        else{
+          score_input_focus(motherpb);
+        }
       }
       else{
-        motherpb.find("input").focus();
+        //这为了保证focus
+        if (motherpb.hasClass("input-on")){
+          motherpb.find("input").focus();
+        }
+        else{};
       }
     }
     else{
@@ -444,8 +458,23 @@ function reload_fn(){
 }
 
 //以下为编辑tag的内容
-function edit_tag(){
-
+function tag_editor(){
+  current_edition = 0;
+  if(cf.find(".each-tag").first().hasClass("add-tag")){
+    //do nothing
+  }
+  else{
+    current_edition = cf.find(".each-tag").first();
+    do
+    {
+      current_edition.before("<input type='text' class='edition'>");
+      current_edition.prev().val(current_edition.text());
+      current_edition = current_edition.next();
+      current_edition.prev().remove();
+    } 
+    while(current_edition.hasClass("add-tag") == false);
+    cf.find(".edition").first().focus();
+  }
 }
 
 function clicktag(target){
@@ -457,7 +486,7 @@ function clicktag(target){
   }
   else{
     if($(target).hasClass("edit-tag")){
-
+      // tag_editor();
     }
     else{
       if ($(target).hasClass("tag-selected")){
@@ -489,10 +518,23 @@ function clicktag(target){
 }
 // 以上为有关click的一堆结束
 
+function clear_score(target){
+  if ($(target).hasClass("has-score") && pbselection($(target))) {
+    if($(target).find(".score_get").hasClass("done")){}
+      else{
+        $(target).find(".score_get").html("?");
+      }
+  }
+  else{
+    //do nothing
+  }
+}
+
 function score_input_hide(target){
+  clear_score($(target));
   $(".score-input").css("display","none");
-  KeyboardJS.enable();
   $(target).removeClass("input-on");
+  KeyboardJS.enable();
 }
 
 //target必须是each pb
@@ -532,21 +574,51 @@ $(function(){
   }
 
 //此函数用于处理score input打开时候的键盘行为监视
-$(".score-input input").keydown(function(event){
+  $(".score-input input").keydown(function(event){
     if (event.keyCode == 13){
-      score_input_hide(cf);
+      // score_input_hide(cf);
       var score = $(this).val().toString();
+      //这是为了显示该题的得分没有被输入
+      if(score == ""){
+        score = "?";
+      }
+      else{};
       if (cf.hasClass("sub-pb")){
         motherpb.find(".score_get").html(score);
+        //这段加done，为了标记score input弹出的条件。未来可以拿出去
+        if(score == "?"){}
+          else{
+            motherpb.find(".score_get").addClass("done");
+          }
       }
       else{
         cf.find(".score_get").html(score);
+        if(score == "?"){}
+          else{
+            if(motherpb == 0){}
+              else{
+                motherpb.find(".score_get").addClass("done")
+              };
+          }
       }
+      
       return false; //这一行不加，将导致pbselect被取消
     }
     else{
       //do nothing
     }
+  });
+
+
+
+  $("#student, #score").on("focus", function(){
+    KeyboardJS.disable();
+    console.log("1");
+  });
+
+  $("#student, #score").on("blur",function(){
+    KeyboardJS.enable();
+    console.log("2");
   });
 
 //此函数为了实现：有input框的cf，当鼠标绕一圈重新enter时不执行mouseenter而进行了一些修改。主要是，当enter其他东西的时候，原来的cf的input-on要删除。其他时候这个删除操作时针对当前cf写的
@@ -588,6 +660,11 @@ $(".score-input input").keydown(function(event){
   $(".each-pb").mouseleave(function(){
       this_hide($(this));
       conditional_remove_new_tag();
+      //对于没有小题的有得分题，mouseleave触发conditional，将导致快捷键被enable。故用下面的if处理之。这个未来需要整理
+      if (cf.hasClass("input-on")){
+        KeyboardJS.disable();
+      }
+      else{};
       cf_tag = 0;
       $(this).find(".tag-focus").removeClass("tag-focus");
 });
